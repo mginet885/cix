@@ -1,0 +1,62 @@
+import tensorflow as tf
+from tensorflow.python.framework.ops import disable_eager_execution
+disable_eager_execution()
+from collections import deque
+from keras.models import Sequential, load_model
+from keras.layers.core import Dense, Dropout, Activation
+from keras.optimizer_v1 import adam, sgd, rmsprop
+from keras.layers.advanced_activations import LeakyReLU
+import random
+import os
+
+class Trainer:
+    def __init__(self, name=None, learning_rate=0.001, epsilon_decay=0.998, batch_size=16, memory_size=3000):
+        self.state_size = 64
+        self.action_size = 64
+        self.gamma = 0.5
+        self.epsilon = 1.0
+        self.epsilon_decay = epsilon_decay
+        self.learning_rate = learning_rate
+        self.memory = deque(maxlen=memory_size)
+        self.batch_size = batch_size
+        
+        model = Sequential()
+        model.add(Dense(50, input_dim=self.state_size, activation='relu'))
+        model.add(Dense(50, activation='relu'))
+        model.add(Dense(50, activation='relu'))
+        model.add(Dense(self.action_size, activation='linear'))
+        model.compile(loss='mse', optimizer=adam(lr=self.learning_rate))      
+        self.model = model
+        
+    def decay_epsilon(self):
+        self.epsilon *= self.epsilon_decay
+    
+    def get_best_action(self, state, rand=True):
+        if rand and np.random.rand() <= self.epsilon:
+            # The agent acts randomly       
+            act_values = np.zeros(64)
+            for i in range(64):
+                act_values[i] = np.random.rand()*2-1    
+        else:    
+            # Predict the reward value based on the given state
+            act_values = self.model.predict(np.array(state))
+        act_values = np.reshape(act_values,[1,64])
+        return act_values
+
+    def remember(self, state, action, reward, next_state, next_reward, done):
+        self.memory.append([state, action, reward, next_state, next_reward, done])
+    
+    def replay(self, batch_size):
+        batch_size = min(batch_size, len(self.memory))
+        minibatch = random.sample(self.memory, batch_size)
+        inputs = np.zeros((batch_size, self.state_size))
+        outputs = np.zeros((batch_size, self.action_size))
+        for i, (state, action, reward, next_state, next_reward, done) in enumerate(minibatch):
+            target = self.model.predict(state)[0]
+            if done:
+                target[action] = reward
+            else:
+                target[action] = reward - self.gamma * next_reward
+            inputs[i] = state
+            outputs[i] = target
+        return self.model.fit(inputs, outputs, epochs=1, verbose=0, batch_size=batch_size)

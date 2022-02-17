@@ -1,0 +1,91 @@
+import numpy as np
+import random
+
+class Game:
+    
+    def __init__(self):
+        self.cases = np.full((12,12),0)
+        self.cases[5][5] = 1
+        self.cases[6][6] = 1
+        self.cases[6][5] = -1
+        self.cases[5][6] = -1
+               
+    def print(self):
+        str = ""
+        for i in range(2,10,+1):
+            for j in range(2,10,+1):
+                if self.cases[i][j] == -1:
+                    str += "X "
+                elif self.cases[i][j] == 1:
+                    str += "O "
+                else:
+                    str += ". "
+            str += "\n"
+        print(str)    
+                       
+    def score(self,player):
+        s = 0
+        for i in range(2,10,+1):
+            for j in range(2,10,+1):
+                if(self.cases[i][j]==player): 
+                    s = s + 1
+        return s
+               
+    def add_pion(self, x, y, player): #ajoute un pion et met a jour le plateau
+        self.cases[x][y] = player     
+        if(self.cases[x+1][y]==-player):
+            a = x+2
+            while(self.cases[a][y]==-player):
+                a = a+1
+            if(self.cases[a][y]==player):
+                while(a>x):
+                    self.cases[a][y]=player
+                    a= a-1             
+        if(self.cases[x-1][y]==-player):
+            a = x-2
+            while(self.cases[a][y]==-player):
+                a = a-1
+            if(self.cases[a][y]==player):
+                while(a<x):
+                    self.cases[a][y]=player
+                    a=a+1          
+        if(self.cases[x][y+1]==-player):
+            a = y+2
+            while(self.cases[x][a]==-player):
+                a= a+1
+            if(self.cases[x][a]==player):
+                while(a>y):
+                    self.cases[x][a]=player
+                    a= a-1               
+        if(self.cases[x][y-1]==-player):
+            a = y-2
+            while(self.cases[x][a]==-player):
+                a= a-1
+            if(self.cases[x][a]==player):
+                while(a<y):
+                    self.cases[x][a]=player
+                    a= a+1
+  
+    def play_on_case(self, x, y, player): #test si le pion est jouable (et le joue si possible)
+        r = 0
+        if(self.cases[x][y]==0):
+            if (x>1 and x<10 and y>1 and y<10):
+                s = self.score(player)
+                self.add_pion(x, y, player)
+                if(self.score(player)==s+1):
+                    self.cases[x][y] = 0
+                    #print("coup invalide car ne rapport pas de point")
+                else: r = 1          
+            #else:
+                #print("coup invalide car coordonnées en dehors du plateau")
+        #else: #print("case deja occuppee")
+        return r
+      
+    def get_state(self): # vecteur utilisé en entrée de RdN
+        state = np.zeros(64)
+        for i in range(2,10,+1):
+            for j in range(2,10,+1):
+                state[(i-2)+8*(j-2)] = self.cases[i][j]
+        state = np.reshape(state,[1,64])
+        return state
+  

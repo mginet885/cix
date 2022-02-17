@@ -1,0 +1,62 @@
+import time
+
+def train(episodes, trainer1, trainer2):
+    batch_size = 16
+    global_counter = 0
+    scores1 = []
+    scores2 = []
+    epsilons1 = []
+    
+    for e in range(episodes):
+        done1 = False
+        done2 = False
+        g = Game()
+        first_round = True
+        state1 = g.get_state()
+        while not (done1 and done2):
+            
+            s = g.score(1)                      
+            act_values = trainer1.get_best_action(state1)
+            action1 =  np.argmax(act_values[0,])       
+            while(g.play_on_case(2+(action1 % 8), 2+(action1 // 8),1)==0 and not act_values[0,action1]==-1.0):
+                act_values[0,action1] = -1.0
+                action1 = np.argmax(act_values[0,])  
+            if(not act_values[0,action1]==-1.0):               
+                done1 = False
+            else: 
+                done1 = True   
+            next_state1 = g.get_state()
+            reward1 = g.score(1) - s
+            if(not first_round):
+                trainer2.remember(state2,action2,reward2,next_state2,reward1,False)
+            state2 = next_state1 
+            global_counter += 1 
+            
+            s = g.score(-1)                      
+            act_values = trainer2.get_best_action(state2)
+            action2 =  np.argmax(act_values[0,])  
+            while(g.play_on_case(2+(action2 % 8), 2+(action2 // 8),-1)==0 and not act_values[0,action2]==-1.0):
+                act_values[0,action2] = -1.0
+                action2 = np.argmax(act_values[0,]) 
+            if(not act_values[0,action2]==-1.0):                   
+                done2 = False 
+            else: 
+                done2 = True
+            next_state2 = g.get_state()
+            reward2 = g.score(-1) - s
+            trainer1.remember(state1,action1,reward1,next_state1,reward2,False)
+            state1 = next_state2 
+            global_counter += 1
+            
+            first_round = False
+            if(global_counter % 140 == 0):
+                l1 = trainer1.replay(batch_size)
+                l2 = trainer2.replay(batch_size)
+        
+        #g.print() 
+        trainer1.decay_epsilon()
+        trainer2.decay_epsilon()
+        scores1.append(g.score(1))
+        scores2.append(g.score(-1))
+        epsilons1.append(trainer1.epsilon)  
+    return scores1, scores2, epsilons1
